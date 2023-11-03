@@ -1,87 +1,71 @@
 import * as pixabayapi from './FetchImages/FetchImages';
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Loader } from './Loader/Loader';
 import { LoadMoreButton } from './LoadMoreButton/LoadMoreButton';
 
-export class App extends Component {
-  state = {
-    query: '',
-    images: [],
-    page: 1,
-    totalHits: 0,
-    isLoadMoreBtnVisible: false,
-    isLoading: false,
-  };
+export const App = () => {
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [isLoadMoreBtnVisible, setIsLoadMoreBtnVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  async componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
-    if (
-      (prevState.query !== query && query !== '') ||
-      prevState.page !== page
-    ) {
+  useEffect(() => {
+    if (!query) {
+      return;
+    }
+
+    const fetchImages = async (query, page) => {
       try {
-        this.setState({ isLoading: true });
-
-        const images = await pixabayapi.fetchImages({ query, page });
-        if (images.hits <= 0) {
+        setIsLoading(true);
+        const data = await pixabayapi.fetchImages({ query, page });
+        if (data.hits <= 0) {
           alert('Sorry. There are no images ... 😭');
           return;
         }
-        this.setState(prevState => ({
-          images: [
-            ...prevState.images,
-            ...this.getNormalizedImages(images.hits),
-          ],
-          isLoadMoreBtnVisible: page < Math.ceil(images.totalHits / 12),
-        }));
+        setImages(prevImages => [...prevImages, ...data.hits]);
+
+        setIsLoadMoreBtnVisible(page < Math.ceil(data.totalHits / 12));
       } catch (err) {
         alert('Sorry, something goes wrong');
       } finally {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
       }
-    }
-  }
-  getNormalizedImages(array) {
-    return array.map(({ id, webformatURL, largeImageURL, tags }) => ({
-      id,
-      webformatURL,
-      largeImageURL,
-      tags,
-    }));
-  }
+    };
 
-  handleFormSubmit = query => {
-    this.setState({ query, images: [], page: 1 });
+    fetchImages(query, page);
+  }, [query, page]);
+
+  const handleFormSubmit = query => {
+    setQuery(query);
+    setPage(1);
+    setImages([]);
   };
 
-  handleClickLoadMore = () => {
-    return this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleClickLoadMore = () => {
+    return setPage(prevPage => prevPage + 1);
   };
 
-  render() {
-    return (
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gridGap: '16px',
-          paddingBottom: '24px',
-        }}
-      >
-        <Searchbar onSubmit={this.handleFormSubmit} />
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gridGap: '16px',
+        paddingBottom: '24px',
+      }}
+    >
+      <Searchbar onSubmit={handleFormSubmit} />
 
-        {this.state.images.length > 0 && (
-          <ImageGallery images={this.state.images}></ImageGallery>
-        )}
+      {images.length > 0 && <ImageGallery images={images}></ImageGallery>}
 
-        {this.state.isLoading && <Loader />}
+      {isLoading && <Loader />}
 
-        {this.state.isLoadMoreBtnVisible && !this.state.isLoading && (
-          <LoadMoreButton onClick={this.handleClickLoadMore} />
-        )}
-      </div>
-    );
-  }
-}
+      {isLoadMoreBtnVisible && !isLoading && (
+        <LoadMoreButton onClick={handleClickLoadMore} />
+      )}
+    </div>
+  );
+};
