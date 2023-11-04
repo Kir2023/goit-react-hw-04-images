@@ -38,8 +38,11 @@ export const App = () => {
     fetchImages(query, page);
   }, [query, page]);
 
-  const handleFormSubmit = query => {
-    setQuery(query);
+  const handleFormSubmit = newQuery => {
+    if (newQuery === query) {
+      return alert(`You are already viewing images on request ${query}`);
+    }
+    setQuery(newQuery);
     setPage(1);
     setImages([]);
   };
